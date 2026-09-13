@@ -11,22 +11,27 @@ pub const TaskStepRes = enum {
     Block,
 };
 
-pub fn Task(comptime State: type) type {
-    return struct {
-        status: TaskStatus,
-        state: State,
-        fun: fun_ty,
+pub const Task = struct {
+    status: TaskStatus,
+    state: *anyopaque,
+    fun: *const fn (*anyopaque) TaskStepRes,
 
-        const fun_ty = *const fn (*State) TaskStepRes;
+    const Self = @This();
 
-        const Self = @This();
+    pub fn step(self: *Self) TaskStepRes {
+        return self.fun(self.state);
+    }
 
-        pub fn step(self: *Self) TaskStepRes {
-            return self.fun(&self.state);
-        }
+    pub fn init(state_ptr: anytype, comptime fun: fn (@TypeOf(state_ptr)) TaskStepRes) Self {
+        const Ptr = @TypeOf(state_ptr);
 
-        pub fn init(state: State, fun: fun_ty) Self {
-            return .{ .fun = fun, .state = state, .status = .Ready };
-        }
-    };
-}
+        const gen = struct {
+            fn wrapper(state: *anyopaque) TaskStepRes {
+                const ptr: Ptr = @ptrCast(@alignCast(state));
+                return fun(ptr);
+            }
+        };
+
+        return .{ .fun = gen.wrapper, .state = state_ptr, .status = .Ready };
+    }
+};
