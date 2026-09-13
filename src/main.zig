@@ -12,8 +12,8 @@ fn worker1(state: *u32) task.TaskStepRes {
 
 fn worker2(state: *u32) task.TaskStepRes {
     std.debug.print("worker2: state = {}\n", .{state.*});
-    state.* = state.* + 2;
-    return .Continue;
+    state.* = state.* + 1;
+    return if (state.* < 3) .Continue else .Block;
 }
 
 pub fn main() !void {
@@ -28,5 +28,6 @@ pub fn main() !void {
 
     for (0..10) |_| {
         _ = try scheduler.step();
+        // std.debug.print("tasks = {any}\n\n", .{scheduler.tasks});
     }
 }
