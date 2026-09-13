@@ -35,7 +35,7 @@ pub const Scheduler = struct {
     pub fn step(self: *Self) !void {
         const next_task_id = try self.find_next_ready();
 
-        var next_task = self.tasks[next_task_id];
+        var next_task = &self.tasks[next_task_id];
         next_task.status = .Running;
 
         switch (next_task.step()) {
