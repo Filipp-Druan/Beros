@@ -2,7 +2,7 @@ const std = @import("std");
 
 const root = @import("root.zig");
 const task = root.task;
-const scheduler = root.scheduler;
+const scheduler_module = root.scheduler;
 
 fn worker1(state: *u32) task.TaskStepRes {
     std.debug.print("worker1: state = {}\n", .{state.*});
@@ -24,9 +24,9 @@ pub fn main() !void {
         task.Task.init(&count_1, worker1),
         task.Task.init(&count_2, worker2),
     };
-    var sched = scheduler.Scheduler.init(&tasks);
+    var scheduler = scheduler_module.Scheduler.init(&tasks);
 
     for (0..10) |_| {
-        _ = sched.step();
+        _ = try scheduler.step();
     }
 }
