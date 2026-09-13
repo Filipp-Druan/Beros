@@ -16,19 +16,17 @@ pub const Scheduler = struct {
         return .{ .tasks = tasks, .current_task_id = 0 };
     }
 
-    fn int_current_task_num(self: *Self) void {
+    fn int_current_task_id(self: *Self) void {
         self.current_task_id = (self.current_task_id + 1) % self.tasks.len;
     }
 
     fn find_next_ready(self: *Self) !TaskId {
-        var counter = self.current_task_id + 1;
-        while (counter != self.current_task_id) {
+        var counter = self.current_task_id;
+        while (true) {
             if (self.tasks[counter].status == .Ready) return counter;
-
             counter = (counter + 1) % self.tasks.len;
+            if (counter == self.current_task_id) return SchedulerError.AllTasksBlocked;
         }
-
-        return SchedulerError.AllTasksBlocked;
     }
 
     // Эта функция выполняет следующую готовую к выполнению задачу. Если все задачи заблокированы, возвращается ошибка.
@@ -42,5 +40,8 @@ pub const Scheduler = struct {
             .Continue => next_task.status = .Ready,
             .Block => next_task.status = .Blocked,
         }
+
+        self.current_task_id = next_task_id;
+        self.int_current_task_id();
     }
 };
