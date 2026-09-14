@@ -4,7 +4,7 @@ const TaskId = root.task.TaskId;
 
 // В этом файле находится планировщик задач.
 
-const SchedulerError = error{AllTasksBlocked};
+const SchedulerError = error{ AllTasksBlocked, TaskArrayEmpty };
 
 pub const Scheduler = struct {
     tasks: []Task,
@@ -21,6 +21,7 @@ pub const Scheduler = struct {
     }
 
     fn find_next_ready(self: *Self) !TaskId {
+        if (self.tasks.len == 0) return SchedulerError.TaskArrayEmpty;
         var counter = self.current_task_id;
         while (true) {
             if (self.tasks[counter].status == .Ready) return counter;
