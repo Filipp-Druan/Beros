@@ -16,7 +16,7 @@ pub const Scheduler = struct {
         return .{ .tasks = tasks, .current_task_id = 0 };
     }
 
-    fn int_current_task_id(self: *Self) void {
+    fn inc_current_task_id(self: *Self) void {
         self.current_task_id = (self.current_task_id + 1) % self.tasks.len;
     }
 
@@ -43,6 +43,6 @@ pub const Scheduler = struct {
         }
 
         self.current_task_id = next_task_id;
-        self.int_current_task_id();
+        self.inc_current_task_id();
     }
 };
