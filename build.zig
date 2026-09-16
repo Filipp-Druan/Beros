@@ -11,11 +11,17 @@ pub fn build(b: *std.Build) void { // $ls roots_index 0
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
-    const target = b.standardTargetOptions(.{});
+    const target = b.resolveTargetQuery(.{
+        .cpu_arch = .thumb, // Используем Thumb-инструкции для ARM
+        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m4 },
+        .os_tag = .freestanding,
+        .abi = .eabihf, // "hf" означает Hard-Float (использование FPU)
+    });
+
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
     // set a preferred release mode, allowing the user to decide how to optimize.
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = .ReleaseSmall;
     // It's also possible to define more custom flags to toggle optional features
     // of this build script using `b.option()`. All defined flags (including
     // target and optimize options) will be listed when running `zig build --help`
@@ -82,6 +88,13 @@ pub fn build(b: *std.Build) void { // $ls roots_index 0
             },
         }),
     });
+
+    // Указываем скрипт линкера для STM32F401
+        exe.setLinkerScript(b.path("stm32f401.ld"));
+        exe.link_gc_sections = true;
+        exe.root_module.strip = true;
+
+        b.installArtifact(exe);
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
