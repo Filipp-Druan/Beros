@@ -3,12 +3,54 @@ pub const TaskId = usize;
 pub const TaskStatus = enum {
     Running,
     Blocked,
+    Finished,
     Ready,
 };
 
-pub const TaskStepRes = enum {
+pub const HubReqStatus = enum { NW, W };
+
+pub const TaskStepRes = union(enum) {
+    const Request = struct {
+        status: HubReqStatus,
+        hub: *anyopaque,
+        fun: *const fn (*anyopaque, TaskId, *anyopaque) anyerror!void,
+        id: TaskId,
+        data: *anyopaque,
+    };
     Continue,
-    Block,
+    Finish,
+    Get: Request,
+    Put: Request,
+
+    pub fn makePutReq(status: HubReqStatus, hub_ptr: anytype, id: TaskId, data: *@TypeOf(hub_ptr.*).PutTy) TaskStepRes {
+        const Ptr = @TypeOf(hub_ptr);
+        const Data = @TypeOf(data);
+
+        const gen = struct {
+            fn wrapper(hub: *anyopaque, task_id: TaskId, req_data: *anyopaque) anyerror!void {
+                const ptr: Ptr = @ptrCast(@alignCast(hub));
+                const data_typed: Data = @ptrCast(@alignCast(req_data));
+                return ptr.put(task_id, data_typed.*);
+            }
+        };
+
+        return .{ .Put = .{ .fun = gen.wrapper, .id = id, .data = data, .hub = hub_ptr, .status = status } };
+    }
+
+    pub fn makeGetReq(status: HubReqStatus, hub_ptr: anytype, id: TaskId, data: *@TypeOf(hub_ptr.*).GetTy) TaskStepRes {
+        const Ptr = @TypeOf(hub_ptr);
+        const Data = @TypeOf(data);
+
+        const gen = struct {
+            fn wrapper(hub: *anyopaque, task_id: TaskId, req_data: *anyopaque) anyerror!void {
+                const ptr: Ptr = @ptrCast(@alignCast(hub));
+                const data_typed: Data = @ptrCast(@alignCast(req_data));
+                return ptr.get(task_id, data_typed);
+            }
+        };
+
+        return .{ .Get = .{ .fun = gen.wrapper, .id = id, .data = data, .hub = hub_ptr, .status = status } };
+    }
 };
 
 pub const Task = struct {

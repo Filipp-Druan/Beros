@@ -3,31 +3,34 @@ const std = @import("std");
 const root = @import("root.zig");
 const task = root.task;
 const scheduler_module = root.scheduler;
+const hub_module = root.hub;
+const Hub = hub_module.Hub;
+const TaskId = task.TaskId;
 
-const one: u32 = 1;
-const two: u32 = 2;
-const three: u32 = 3;
-const num_13: u32 = 13;
-const num_26: u32 = 26;
+const WriteHub = Hub(void, void, 0, u32, 0);
+
+fn whPut(wh: *WriteHub, massage: u32, id: TaskId) anyerror!void {
+    _ = wh;
+    std.debug.print("worker {} = {}\n", .{ id, massage });
+}
+
+var write_hub = WriteHub.initPut({}, WriteHub.alwaysTrue, whPut);
 
 // Задача 1: Только ВКЛЮЧАЕТ светодиод
 fn worker1(state: *u32) task.TaskStepRes {
     state.* += 1;
-    std.debug.print("w1 = {}\n", .{state.*});
-    return .Continue; // Эта задача работает вечно
+    return .makePutReq(.NW, &write_hub, 0, state); // Эта задача работает вечно
 }
 
 // Задача 2: Только ВЫКЛЮЧАЕТ светодиод
 fn worker2(state: *u32) task.TaskStepRes {
     state.* += 1;
 
-    std.debug.print("w2 = {}\n", .{state.*});
-
     if (state.* >= 3) {
-        return .Block; // Переходим в статус TaskStatus.Blocked
+        return .Finish; // Переходим в статус TaskStatus.Blocked
     }
 
-    return .Continue;
+    return .makePutReq(.NW, &write_hub, 1, state);
 }
 
 pub fn main() !void {

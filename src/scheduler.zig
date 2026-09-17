@@ -39,7 +39,15 @@ pub const Scheduler = struct {
 
         switch (next_task.step()) {
             .Continue => next_task.status = .Ready,
-            .Block => next_task.status = .Blocked,
+            .Finish => next_task.status = .Finished,
+            .Put => |req| {
+                try req.fun(req.hub, req.id, req.data);
+                if (req.status == .NW) next_task.status = .Ready else next_task.status = .Blocked;
+            },
+            .Get => |req| {
+                try req.fun(req.hub, req.id, req.data);
+                if (req.status == .NW) next_task.status = .Ready else next_task.status = .Blocked;
+            },
         }
 
         self.current_task_id = next_task_id;
