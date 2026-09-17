@@ -7,14 +7,21 @@ const hub_module = root.hub;
 const Hub = hub_module.Hub;
 const TaskId = task.TaskId;
 
-const WriteHub = Hub(void, void, 0, u32, 0);
+const WriteHub = Hub(.{ .Put = .{ .state_ty = void, .put_ty = u32, .put_size = 0 } });
 
 fn whPut(wh: *WriteHub, massage: u32, id: TaskId) anyerror!void {
     _ = wh;
     std.debug.print("worker {} = {}\n", .{ id, massage });
 }
 
-var write_hub = WriteHub.initPut({}, WriteHub.alwaysTrue, whPut);
+pub fn alwaysTrue(self: *WriteHub, data: u32, id: TaskId) anyerror!bool {
+    _ = self;
+    _ = data;
+    _ = id;
+    return true;
+}
+
+var write_hub = WriteHub{ .state = {}, .put_pred = alwaysTrue, .put_action = whPut, .put_waiting_list = .init() };
 
 // Задача 1: Только ВКЛЮЧАЕТ светодиод
 fn worker1(state: *u32) task.TaskStepRes {

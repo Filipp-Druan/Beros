@@ -46,89 +46,99 @@ fn WaitingList(ty: type, comptime size: usize) type {
     };
 }
 
-pub fn Hub(state_ty: type, get_ty: type, get_size: usize, put_ty: type, put_size: usize) type {
-    return struct {
-        pub const PutTy = put_ty;
-        pub const GetTy = get_ty;
-        const Self = @This();
+pub const HubConstructor = union(enum) {
+    Put: struct {
+        state_ty: type,
+        put_ty: type,
+        put_size: usize,
+    },
 
-        state: state_ty,
-        get_pred: *const fn (*Self, get_ty, TaskId) anyerror!bool,
-        get_action: *const fn (*Self, get_ty, TaskId) anyerror!void,
-        put_pred: *const fn (*Self, put_ty, TaskId) anyerror!bool,
-        put_action: *const fn (*Self, put_ty, TaskId) anyerror!void,
+    Get: struct {
+        state_ty: type,
+        get_ty: type,
+        get_size: usize,
+    },
 
-        get_waiting_list: WaitingList(get_ty, get_size),
-        put_waiting_list: WaitingList(put_ty, put_size),
+    PutGet: struct {
+        state_ty: type,
+        get_ty: type,
+        get_size: usize,
+        put_ty: type,
+        put_size: usize,
+    },
+};
 
-        pub fn put(self: *Self, id: TaskId, data: put_ty) anyerror!void {
-            if (try self.put_pred(self, data, id)) {
-                try self.put_action(self, data, id);
+pub fn Hub(constructor: HubConstructor) type {
+    return switch (constructor) {
+        .Put => |c| struct {
+            const Self = @This();
+            pub const PutTy = c.put_ty;
+
+            state: c.state_ty,
+            put_pred: *const fn (*Self, c.put_ty, TaskId) anyerror!bool,
+            put_action: *const fn (*Self, c.put_ty, TaskId) anyerror!void,
+            put_waiting_list: WaitingList(c.put_ty, c.put_size),
+
+            pub fn put(self: *Self, id: TaskId, data: c.put_ty) anyerror!void {
+                if (try self.put_pred(self, data, id)) {
+                    try self.put_action(self, data, id);
+                    return;
+                }
+
+                try self.put_waiting_list.add(.{ .data = data, .id = id });
+                return;
+            }
+        },
+        .Get => |c| struct {
+            const Self = @This();
+            pub const GetTy = c.get_ty;
+
+            state: c.state_ty,
+            get_pred: *const fn (*Self, c.get_ty, TaskId) anyerror!bool,
+            get_action: *const fn (*Self, c.get_ty, TaskId) anyerror!void,
+            get_waiting_list: WaitingList(c.get_ty, c.get_size),
+
+            pub fn get(self: *Self, id: TaskId, data: c.get_ty) anyerror!void {
+                if (try self.get_pred(self, data, id)) {
+                    self.get_action(self, data, id);
+                    return;
+                }
+
+                try self.get_waiting_list.add(.{ .data = data, .id = id });
+                return;
+            }
+        },
+        .PutGet => |c| struct {
+            pub const PutTy = c.put_ty;
+            pub const GetTy = c.get_ty;
+            const Self = @This();
+            state: c.state_ty,
+            put_pred: *const fn (*Self, c.put_ty, TaskId) anyerror!bool,
+            put_action: *const fn (*Self, c.put_ty, TaskId) anyerror!void,
+            put_waiting_list: WaitingList(c.put_ty, c.put_size),
+            get_pred: *const fn (*Self, c.get_ty, TaskId) anyerror!bool,
+            get_action: *const fn (*Self, c.get_ty, TaskId) anyerror!void,
+            get_waiting_list: WaitingList(c.get_ty, c.get_size),
+
+            pub fn put(self: *Self, id: TaskId, data: c.put_ty) anyerror!void {
+                if (try self.put_pred(self, data, id)) {
+                    try self.put_action(self, data, id);
+                    return;
+                }
+
+                try self.put_waiting_list.add(.{ .data = data, .id = id });
                 return;
             }
 
-            try self.put_waiting_list.add(.{ .data = data, .id = id });
-            return;
-        }
+            pub fn get(self: *Self, id: TaskId, data: c.get_ty) anyerror!void {
+                if (try self.get_pred(self, data, id)) {
+                    self.get_action(self, data, id);
+                    return;
+                }
 
-        pub fn get(self: *Self, id: TaskId, data: get_ty) anyerror!void {
-            if (try self.get_pred(self, data, id)) {
-                self.get_action(self, data, id);
+                try self.get_waiting_list.add(.{ .data = data, .id = id });
                 return;
             }
-
-            try self.get_waiting_list.add(.{ .data = data, .id = id });
-            return;
-        }
-        pub fn emptyGetPred(self: *Self, data: get_ty, id: TaskId) anyerror!bool {
-            _ = self;
-            _ = data;
-            _ = id;
-            unreachable;
-        }
-
-        pub fn emptyPutPred(self: *Self, data: put_ty, id: TaskId) anyerror!bool {
-            _ = self;
-            _ = data;
-            _ = id;
-            unreachable;
-        }
-
-        pub fn emptyGetAction(self: *Self, data: get_ty, id: TaskId) anyerror!void {
-            _ = self;
-            _ = data;
-            _ = id;
-            unreachable;
-        }
-
-        pub fn emptyPutAction(self: *Self, data: put_ty, id: TaskId) anyerror!void {
-            _ = self;
-            _ = data;
-            _ = id;
-            unreachable;
-        }
-
-        pub fn alwaysTrue(self: *Self, data: put_ty, id: TaskId) anyerror!bool {
-            _ = self;
-            _ = data;
-            _ = id;
-            return true;
-        }
-
-        pub fn initPut(
-            state: state_ty,
-            put_pred: *const fn (*Self, put_ty, TaskId) anyerror!bool,
-            put_action: *const fn (*Self, put_ty, TaskId) anyerror!void,
-        ) Self {
-            return .{
-                .state = state,
-                .put_pred = put_pred,
-                .put_action = put_action,
-                .get_pred = emptyGetPred,
-                .get_action = emptyGetAction,
-                .put_waiting_list = WaitingList(put_ty, put_size).init(),
-                .get_waiting_list = WaitingList(get_ty, put_size).init(),
-            };
-        }
+        },
     };
 }
