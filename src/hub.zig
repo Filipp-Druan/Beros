@@ -46,6 +46,11 @@ fn WaitingList(ty: type, comptime size: usize) type {
     };
 }
 
+pub const SyncRes = union(enum) {
+    Success,
+    Fail,
+};
+
 pub const HubConstructor = union(enum) {
     Put: struct {
         state_ty: type,
@@ -79,14 +84,14 @@ pub fn Hub(constructor: HubConstructor) type {
             put_action: *const fn (*Self, c.put_ty, TaskId) anyerror!void,
             put_waiting_list: WaitingList(c.put_ty, c.put_size),
 
-            pub fn put(self: *Self, id: TaskId, data: c.put_ty) anyerror!void {
+            pub fn put(self: *Self, id: TaskId, data: c.put_ty) anyerror!SyncRes {
                 if (try self.put_pred(self, data, id)) {
                     try self.put_action(self, data, id);
-                    return;
+                    return SyncRes.Success;
                 }
 
                 try self.put_waiting_list.add(.{ .data = data, .id = id });
-                return;
+                return SyncRes.Fail;
             }
         },
         .Get => |c| struct {
@@ -98,14 +103,14 @@ pub fn Hub(constructor: HubConstructor) type {
             get_action: *const fn (*Self, c.get_ty, TaskId) anyerror!void,
             get_waiting_list: WaitingList(c.get_ty, c.get_size),
 
-            pub fn get(self: *Self, id: TaskId, data: c.get_ty) anyerror!void {
+            pub fn get(self: *Self, id: TaskId, data: c.get_ty) anyerror!SyncRes {
                 if (try self.get_pred(self, data, id)) {
                     self.get_action(self, data, id);
-                    return;
+                    return SyncRes.Success;
                 }
 
                 try self.get_waiting_list.add(.{ .data = data, .id = id });
-                return;
+                return SyncRes.Fail;
             }
         },
         .PutGet => |c| struct {
@@ -114,30 +119,30 @@ pub fn Hub(constructor: HubConstructor) type {
             const Self = @This();
             state: c.state_ty,
             put_pred: *const fn (*Self, c.put_ty, TaskId) anyerror!bool,
-            put_action: *const fn (*Self, c.put_ty, TaskId) anyerror!void,
+            put_action: *const fn (*Self, c.put_ty, TaskId) anyerror!SyncRes,
             put_waiting_list: WaitingList(c.put_ty, c.put_size),
             get_pred: *const fn (*Self, c.get_ty, TaskId) anyerror!bool,
-            get_action: *const fn (*Self, c.get_ty, TaskId) anyerror!void,
+            get_action: *const fn (*Self, c.get_ty, TaskId) anyerror!SyncRes,
             get_waiting_list: WaitingList(c.get_ty, c.get_size),
 
-            pub fn put(self: *Self, id: TaskId, data: c.put_ty) anyerror!void {
+            pub fn put(self: *Self, id: TaskId, data: c.put_ty) anyerror!SyncRes {
                 if (try self.put_pred(self, data, id)) {
                     try self.put_action(self, data, id);
-                    return;
+                    return SyncRes.Success;
                 }
 
                 try self.put_waiting_list.add(.{ .data = data, .id = id });
-                return;
+                return SyncRes.Fail;
             }
 
-            pub fn get(self: *Self, id: TaskId, data: c.get_ty) anyerror!void {
+            pub fn get(self: *Self, id: TaskId, data: c.get_ty) anyerror!SyncRes {
                 if (try self.get_pred(self, data, id)) {
-                    self.get_action(self, data, id);
-                    return;
+                    try self.get_action(self, data, id);
+                    return SyncRes.Success;
                 }
 
                 try self.get_waiting_list.add(.{ .data = data, .id = id });
-                return;
+                return SyncRes.Fail;
             }
         },
     };
