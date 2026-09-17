@@ -47,7 +47,7 @@ pub const TaskStepRes = union(enum) {
         const Data = @TypeOf(data);
 
         const gen = struct {
-            fn wrapper(hub: *anyopaque, task_id: TaskId, req_data: *anyopaque) anyerror!void {
+            fn wrapper(hub: *anyopaque, task_id: TaskId, req_data: *anyopaque) anyerror!SyncRes {
                 const ptr: Ptr = @ptrCast(@alignCast(hub));
                 const data_typed: Data = @ptrCast(@alignCast(req_data));
                 return ptr.get(task_id, data_typed);
