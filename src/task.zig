@@ -1,3 +1,8 @@
+const root = @import("root.zig");
+const hub_mod = root.hub;
+
+const SyncRes = hub_mod.SyncRes;
+
 pub const TaskId = usize;
 
 pub const TaskStatus = enum {
@@ -13,7 +18,7 @@ pub const TaskStepRes = union(enum) {
     const Request = struct {
         status: HubReqStatus,
         hub: *anyopaque,
-        fun: *const fn (*anyopaque, TaskId, *anyopaque) anyerror!void,
+        fun: *const fn (*anyopaque, TaskId, *anyopaque) anyerror!SyncRes,
         id: TaskId,
         data: *anyopaque,
     };
@@ -27,7 +32,7 @@ pub const TaskStepRes = union(enum) {
         const Data = @TypeOf(data);
 
         const gen = struct {
-            fn wrapper(hub: *anyopaque, task_id: TaskId, req_data: *anyopaque) anyerror!void {
+            fn wrapper(hub: *anyopaque, task_id: TaskId, req_data: *anyopaque) anyerror!SyncRes {
                 const ptr: Ptr = @ptrCast(@alignCast(hub));
                 const data_typed: Data = @ptrCast(@alignCast(req_data));
                 return ptr.put(task_id, data_typed.*);
