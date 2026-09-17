@@ -28,7 +28,7 @@ fn init_led() void {
 // Простейшая функция задержки
 fn delay() void {
     var i: u32 = 0;
-    while (i < 10_000_000) : (i += 1) {
+    while (i < 1_000_000) : (i += 1) {
         // Заставляем компилятор не оптимизировать пустой цикл
         asm volatile ("nop");
     }
@@ -55,7 +55,7 @@ fn worker2(state: *u32) task.TaskStepRes {
     delay();
 
     // Если задача выполнилась 3 раза, блокируем её
-    if (state.* >= 30) {
+    if (state.* >= 5) {
         return .Block; // Переходим в статус TaskStatus.Blocked
     }
 
