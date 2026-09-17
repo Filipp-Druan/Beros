@@ -11,12 +11,15 @@ pub fn build(b: *std.Build) void { // $ls roots_index 0
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
-    const target = b.resolveTargetQuery(.{
-        .cpu_arch = .thumb, // Используем Thumb-инструкции для ARM
-        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m4 },
-        .os_tag = .freestanding,
-        .abi = .eabihf, // "hf" означает Hard-Float (использование FPU)
-    });
+
+    // const target = b.resolveTargetQuery(.{
+    //     .cpu_arch = .thumb, // Используем Thumb-инструкции для ARM
+    //     .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m4 },
+    //     .os_tag = .freestanding,
+    //     .abi = .eabihf, // "hf" означает Hard-Float (использование FPU)
+    // });
+
+    const target = b.standardTargetOptions(.{});
 
     // Standard optimization options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
@@ -89,12 +92,12 @@ pub fn build(b: *std.Build) void { // $ls roots_index 0
         }),
     });
 
-    // Указываем скрипт линкера для STM32F401
-        exe.setLinkerScript(b.path("stm32f401.ld"));
-        exe.link_gc_sections = true;
-        exe.root_module.strip = true;
+    // // Указываем скрипт линкера для STM32F401
+    // exe.setLinkerScript(b.path("stm32f401.ld"));
+    // exe.link_gc_sections = true;
+    // exe.root_module.strip = true;
 
-        b.installArtifact(exe);
+    b.installArtifact(exe);
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
