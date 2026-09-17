@@ -23,7 +23,7 @@ fn WaitingList(ty: type, comptime size: usize) type {
         current: usize = 0,
 
         pub fn init() Self {
-            return Self{ .tasks = [_]Pair{0} ** size };
+            return Self{ .tasks = [_]Pair{undefined} ** size };
         }
 
         pub fn add(self: *Self, pair: Pair) !void {
